@@ -230,10 +230,21 @@ double MiniPID::getOutput(double actual, double setpoint){
 	Ioutput=I*errorSum;
 	if(maxIOutput!=0){
 		Ioutput=clamp(Ioutput,-maxIOutput,maxIOutput); 
-	}	
+	}
 
 	//And, finally, we can just add the terms up
 	output=Foutput + Poutput + Ioutput + Doutput;
+
+	// To synchronize two motors we are using this->positionDiff
+	// if this->positionDiff is positive this means we need to reduce output and vice versa
+	// if output is negative we need to add
+	//output = output + (sgn(output) * -1.0 * this->positionDiff * maxOutput*0.05);
+	
+	float posOutputFilter = 0.35;
+	double POSOutput = clamp(this->positionDiff, -5.0, 5.0) * maxOutput*0.01;
+	double POSOutputFiltered=POSOutput*posOutputFilter+POSOutput*(1-posOutputFilter);
+	output = output - POSOutputFiltered;
+
 
 	//Figure out what we're doing with the error.
 	if(minOutput!=maxOutput && !bounded(output, minOutput,maxOutput) ){
@@ -369,4 +380,9 @@ void MiniPID::checkSigns(){
 		if(D<0) D*=-1;
 		if(F<0) F*=-1;
 	}
+}
+
+void MiniPID::setPositionDiff(double _positionDiff)
+{
+	this->positionDiff = _positionDiff;
 }
