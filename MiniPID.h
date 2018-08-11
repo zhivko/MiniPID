@@ -1,6 +1,8 @@
 #ifndef MINIPID_H
 #define MINIPID_H
 
+#include "HardwareSerial.h"
+
 template <typename T> int sgn(T val) {
     return (T(0) < val) - (val < T(0));
 }
@@ -28,6 +30,30 @@ public:
 	double getOutput();
 	double getOutput(double);
 	double getOutput(double, double);
+	void setSynchronize(bool);
+	bool getSynchronize(); 
+
+	double getP();
+	double getI();
+	double getD();
+	double getF();
+	double getRampRate();
+
+	double getPoutput();
+	double getIoutput();
+	double getDoutput();
+	double getFoutput();
+	double getPOSoutput();
+	double getPOSoutputFiltered();
+
+	double getError();
+	double getErrorSum();
+	double getActual();
+	double getSetpoint();
+
+	double getMaxIOutput();
+
+
 
 
 private:
@@ -40,9 +66,22 @@ private:
 	double D;
 	double F;
 
+	double output;
+	double Poutput;
+	double Ioutput;
+	double Doutput;
+	double Foutput;
+	double POSOutput;
+	double POSOutputFiltered;
+
+	bool sychronize;
+
 	double maxIOutput;
 	double maxError;
 	double errorSum;
+
+	double error;
+	double actual;
 
 	double positionDiff;
 

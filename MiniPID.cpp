@@ -20,7 +20,10 @@ MiniPID::MiniPID(double p, double i, double d){
 }
 MiniPID::MiniPID(double p, double i, double d, double f){
 	init();
-	P=p; I=i; D=d; F=f;
+	P=p; 
+	I=i; 
+	D=d; 
+	F=f;
 }
 void MiniPID::init(){
 	P=0;
@@ -101,7 +104,7 @@ void MiniPID::setD(double d){
  * @param f Feed forward gain. Affects output according to <b>output+=F*Setpoint</b>;
  */
 void MiniPID::setF(double f){
-	F=f;
+	this->F=f;
 	checkSigns();
 }
 
@@ -115,7 +118,7 @@ void MiniPID::setPID(double p, double i, double d){
 	checkSigns();
 }
 
-void MiniPID::setPID(double p, double i, double d,double f){
+void MiniPID::setPID(double p, double i, double d, double f){
 	P=p;I=i;D=d;F=f;
 	checkSigns();
 }
@@ -182,13 +185,9 @@ void MiniPID::setSetpoint(double setpoint){
 * @return calculated output value for driving the actual to the target 
 */
 double MiniPID::getOutput(double actual, double setpoint){
-	double output;
-	double Poutput;
-	double Ioutput;
-	double Doutput;
-	double Foutput;
 
-	this->setpoint=setpoint;
+	this->setpoint = setpoint;
+	this->actual = actual;
 
 	//Ramp the setpoint used for calculations if user has opted to do so
 	if(setpointRange!=0){
@@ -196,13 +195,32 @@ double MiniPID::getOutput(double actual, double setpoint){
 	}
 
 	//Do the simple parts of the calculations
-	double error=setpoint-actual;
+	error=setpoint-actual;
 
 	//Calculate F output. Notice, this->depends only on the setpoint, and not the error. 
 	Foutput=F*setpoint;
 
 	//Calculate P term
-	Poutput=P*error;	 
+	// To synchronize two motors we are using this->positionDiff
+	// if this->positionDiff is positive this means we need to reduce output and vice versa
+	// if output is negative we need to add
+	//output = output + (sgn(output) * -1.0 * this->positionDiff * maxOutput*0.05);
+	Poutput=P*error;
+	if(this->sychronize)	
+	{
+		float posOutputFilter = 1;
+		POSOutput = this->positionDiff * maxOutput * 0.1;
+		//if(abs(this->positionDiff)>0)
+		//	POSOutput = sgn(this->positionDiff) * 281.89 * log(abs(this->positionDiff)) + 398.89;
+		POSOutputFiltered=POSOutput*posOutputFilter+POSOutput*(1-posOutputFilter);
+		POSOutputFiltered = clamp(POSOutputFiltered,-maxOutput*0.5,maxOutput*0.5); //max 20% for sync control
+		Poutput=clamp(Poutput,-(maxOutput-abs(POSOutputFiltered)),maxOutput-abs(POSOutputFiltered));  
+	}
+	else
+	{
+		POSOutputFiltered = 0;
+	}
+
 
 	//If this->is our first time running this-> we don't actually _have_ a previous input or output. 
 	//For sensor, sanely assume it was exactly where it is now.
@@ -233,29 +251,26 @@ double MiniPID::getOutput(double actual, double setpoint){
 	}
 
 	//And, finally, we can just add the terms up
-	output=Foutput + Poutput + Ioutput + Doutput;
-
-	// To synchronize two motors we are using this->positionDiff
-	// if this->positionDiff is positive this means we need to reduce output and vice versa
-	// if output is negative we need to add
-	//output = output + (sgn(output) * -1.0 * this->positionDiff * maxOutput*0.05);
-	
-	float posOutputFilter = 0.35;
-	double POSOutput = clamp(this->positionDiff, -5.0, 5.0) * maxOutput*0.01;
-	double POSOutputFiltered=POSOutput*posOutputFilter+POSOutput*(1-posOutputFilter);
-	output = output - POSOutputFiltered;
-
+	output=Foutput + Poutput + Ioutput + Doutput - POSOutputFiltered;
 
 	//Figure out what we're doing with the error.
 	if(minOutput!=maxOutput && !bounded(output, minOutput,maxOutput) ){
-		errorSum=error; 
+		errorSum=error;
 		// reset the error sum to a sane level
 		// Setting to current error ensures a smooth transition when the P term 
 		// decreases enough for the I term to start acting upon the controller
 		// From that point the I term will build up as would be expected
 	}
 	else if(outputRampRate!=0 && !bounded(output, lastOutput-outputRampRate,lastOutput+outputRampRate) ){
-		errorSum=error; 
+		/*
+		Serial.print("output: ");
+		Serial.print(output);
+		Serial.print(" ");
+		Serial.print(lastOutput-outputRampRate);
+		Serial.print(" ");
+		Serial.println(lastOutput+outputRampRate);
+		*/
+		errorSum=error;
 	}
 	else if(maxIOutput!=0){
 		errorSum=clamp(errorSum+error,-maxError,maxError);
@@ -360,7 +375,7 @@ double MiniPID::clamp(double value, double min, double max){
  * @return
  */
 bool MiniPID::bounded(double value, double min, double max){
-		return (min<value) && (value<max);
+		return (min<=value) && (value<=max);
 }
 
 /**
@@ -385,4 +400,95 @@ void MiniPID::checkSigns(){
 void MiniPID::setPositionDiff(double _positionDiff)
 {
 	this->positionDiff = _positionDiff;
+}
+
+void MiniPID::setSynchronize(bool _sync)
+{
+	this->sychronize = _sync;
+}
+
+
+
+double  MiniPID::getP()
+{
+	return this->P;
+}
+double  MiniPID::getI()
+{
+	return this->I;
+}
+double  MiniPID::getD()
+{
+	return this->D;
+}
+double  MiniPID::getF()
+{
+	return this->F;
+}
+
+bool MiniPID::getSynchronize()
+{
+	return this->sychronize;
+}
+
+
+double MiniPID::getPoutput()
+{
+	return this->Poutput;
+}
+
+double MiniPID::getIoutput()
+{
+	return this->Ioutput;
+}
+
+double MiniPID::getDoutput()
+{
+	return this->Doutput;
+}
+
+double MiniPID::getFoutput()
+{
+	return this->Foutput;
+}
+
+double MiniPID::getPOSoutput()
+{
+	return this->POSOutput;
+}
+
+double MiniPID::getPOSoutputFiltered()
+{
+	return this->POSOutputFiltered;
+}
+
+
+double MiniPID::getActual()
+{
+	return this->actual;
+}
+
+double MiniPID::getError()
+{
+	return this->error;
+}
+
+double MiniPID::getErrorSum()
+{
+	return this->errorSum;
+}
+
+double MiniPID::getSetpoint()
+{
+	return this->setpoint;
+}
+
+double MiniPID::getMaxIOutput()
+{
+	return this->maxIOutput;
+}
+
+double MiniPID::getRampRate()
+{
+	return this->outputRampRate;
 }
