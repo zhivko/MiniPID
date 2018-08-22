@@ -206,21 +206,7 @@ double MiniPID::getOutput(double actual, double setpoint){
 	// if output is negative we need to add
 	//output = output + (sgn(output) * -1.0 * this->positionDiff * maxOutput*0.05);
 	Poutput=P*error;
-	if(this->sychronize)	
-	{
-		float posOutputFilter = 1;
-		POSOutput = this->positionDiff * maxOutput * 0.1;
-		//if(abs(this->positionDiff)>0)
-		//	POSOutput = sgn(this->positionDiff) * 281.89 * log(abs(this->positionDiff)) + 398.89;
-		POSOutputFiltered=POSOutput*posOutputFilter+POSOutput*(1-posOutputFilter);
-		POSOutputFiltered = clamp(POSOutputFiltered,-maxOutput*0.5,maxOutput*0.5); //max 20% for sync control
-		Poutput=clamp(Poutput,-(maxOutput-abs(POSOutputFiltered)),maxOutput-abs(POSOutputFiltered));  
-	}
-	else
-	{
-		POSOutputFiltered = 0;
-	}
-
+	Poutput = clamp(Poutput, minOutput, maxOutput);
 
 	//If this->is our first time running this-> we don't actually _have_ a previous input or output. 
 	//For sensor, sanely assume it was exactly where it is now.
@@ -250,8 +236,9 @@ double MiniPID::getOutput(double actual, double setpoint){
 		Ioutput=clamp(Ioutput,-maxIOutput,maxIOutput); 
 	}
 
+
 	//And, finally, we can just add the terms up
-	output=Foutput + Poutput + Ioutput + Doutput - POSOutputFiltered;
+	output=Foutput + Poutput + Ioutput + Doutput;
 
 	//Figure out what we're doing with the error.
 	if(minOutput!=maxOutput && !bounded(output, minOutput,maxOutput) ){
@@ -262,14 +249,6 @@ double MiniPID::getOutput(double actual, double setpoint){
 		// From that point the I term will build up as would be expected
 	}
 	else if(outputRampRate!=0 && !bounded(output, lastOutput-outputRampRate,lastOutput+outputRampRate) ){
-		/*
-		Serial.print("output: ");
-		Serial.print(output);
-		Serial.print(" ");
-		Serial.print(lastOutput-outputRampRate);
-		Serial.print(" ");
-		Serial.println(lastOutput+outputRampRate);
-		*/
 		errorSum=error;
 	}
 	else if(maxIOutput!=0){
@@ -285,9 +264,27 @@ double MiniPID::getOutput(double actual, double setpoint){
 	if(outputRampRate!=0){
 		output=clamp(output, lastOutput-outputRampRate,lastOutput+outputRampRate);
 	}
+
+	//use of sync
+	if(this->sychronize)	
+	{
+		float posOutputFilter = 0.7;
+		POSOutput = clamp(this->positionDiff, -5,5) * abs(Poutput) * 0.01;
+		//if(abs(this->positionDiff)>0)
+		//	POSOutput = sgn(this->positionDiff) * 281.89 * log(abs(this->positionDiff)) + 398.89;
+		POSOutputFiltered=lastPOSOutputFiltered*posOutputFilter+POSOutput*(1-posOutputFilter);
+		POSOutputFiltered = clamp(POSOutputFiltered,-abs(Poutput*0.03),abs(Poutput*0.03)); //max 3% for sync control
+		lastPOSOutputFiltered = POSOutputFiltered;
+	}
+	else
+	{
+		POSOutputFiltered = 0;
+	}
+
 	if(minOutput!=maxOutput){ 
-		output=clamp(output, minOutput,maxOutput);
-		}
+		output = clamp(output, minOutput + abs(POSOutputFiltered), maxOutput - abs(POSOutputFiltered));
+		output = output - POSOutputFiltered;
+	}
 	if(outputFilter!=0){
 		output=lastOutput*outputFilter+output*(1-outputFilter);
 	}
@@ -491,4 +488,25 @@ double MiniPID::getMaxIOutput()
 double MiniPID::getRampRate()
 {
 	return this->outputRampRate;
+}
+
+
+double MiniPID::getSyncDisabledForErrorSmallerThen()
+{
+	return this->syncDisabledForErrorSmallerThen;
+}
+
+void MiniPID::setSyncDisabledForErrorSmallerThen(double val)
+{
+	this->syncDisabledForErrorSmallerThen = val;
+}
+
+double MiniPID::getMinOutput()
+{
+	return this->minOutput;
+}
+
+double MiniPID::getMaxOutput()
+{
+	return this->maxOutput;
 }

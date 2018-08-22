@@ -53,6 +53,11 @@ public:
 
 	double getMaxIOutput();
 
+	double getSyncDisabledForErrorSmallerThen();
+	void setSyncDisabledForErrorSmallerThen(double val);
+
+	double getMinOutput();
+	double getMaxOutput();
 
 
 
@@ -66,22 +71,24 @@ private:
 	double D;
 	double F;
 
-	double output;
+	volatile double output;
 	double Poutput;
 	double Ioutput;
 	double Doutput;
 	double Foutput;
 	double POSOutput;
+	double lastPOSOutputFiltered;
 	double POSOutputFiltered;
 
-	bool sychronize;
+	volatile bool sychronize;
 
 	double maxIOutput;
 	double maxError;
 	double errorSum;
 
-	double error;
-	double actual;
+	volatile double error;
+	volatile double syncDisabledForErrorSmallerThen;
+	volatile double actual;
 
 	double positionDiff;
 
