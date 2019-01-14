@@ -44,6 +44,7 @@ void MiniPID::init(){
 	lastOutput=0;
 	outputFilter=0;
 	setpointRange=0;
+	POSOutputFiltered=0;
 }
 
 //**********************************
@@ -248,12 +249,12 @@ double MiniPID::getOutput(double actual, double setpoint){
 		// decreases enough for the I term to start acting upon the controller
 		// From that point the I term will build up as would be expected
 	}
-	else if(outputRampRate!=0 && !bounded(output, lastOutput-outputRampRate,lastOutput+outputRampRate) ){
-		errorSum=error;
-	}
+	//else if(outputRampRate!=0 && !bounded(output, lastOutput-outputRampRate,lastOutput+outputRampRate) ){
+	//	errorSum=error;
+	//}
 	else if(maxIOutput!=0){
 		errorSum=clamp(errorSum+error,-maxError,maxError);
-		// In addition to output limiting directly, we also want to prevent I term 
+		// In addition to output limiting directly, we also want to prevent I term
 		// buildup, so restrict the error directly
 	}
 	else{
@@ -509,4 +510,9 @@ double MiniPID::getMinOutput()
 double MiniPID::getMaxOutput()
 {
 	return this->maxOutput;
+}
+
+double MiniPID::getMaxError()
+{
+	return this->maxError;
 }

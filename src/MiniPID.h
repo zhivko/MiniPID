@@ -58,6 +58,7 @@ public:
 
 	double getMinOutput();
 	double getMaxOutput();
+	double getMaxError();
 
 
 
