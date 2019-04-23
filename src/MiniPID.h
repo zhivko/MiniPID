@@ -2,6 +2,7 @@
 #define MINIPID_H
 
 #include "HardwareSerial.h"
+#include <functional>
 
 template <typename T> int sgn(T val) {
     return (T(0) < val) - (val < T(0));
@@ -9,8 +10,11 @@ template <typename T> int sgn(T val) {
 
 class MiniPID{
 public:
-	MiniPID(double, double, double);
-	MiniPID(double, double, double, double);
+	// function to be called when regulation ends (setpoint is reached)
+    typedef std::function<bool(long time)> THandlerFunction;
+
+	MiniPID(double, double, double, THandlerFunction handler);
+	MiniPID(double, double, double, double, THandlerFunction handler);
 	void setP(double);
 	void setI(double);
 	void setD(double);
@@ -109,5 +113,12 @@ private:
 	double outputFilter;
 
 	double setpointRange;
+
+	uint8_t prevSecond;
+	int outSecond[10];
+	bool regulated;
+	bool prevRegulated;
+
+	THandlerFunction _on_trigger;
 };
 #endif
