@@ -303,7 +303,7 @@ double MiniPID::getOutput(double actual, double setpoint) {
 		output = lastOutput * outputFilter + output * (1 - outputFilter);
 	}
 
-	uint8_t second = (uint8_t) ((millis() / 1000) % 10);
+	uint8_t second = (uint8_t) (millis() / 1000);
 	if (second != prevSecond) {
 		outSecond[second] = output;
 		regulated = true;

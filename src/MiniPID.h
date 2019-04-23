@@ -115,7 +115,7 @@ private:
 	double setpointRange;
 
 	uint8_t prevSecond;
-	int outSecond[10];
+	IRAM_ATTR int outSecond[10];
 	bool regulated;
 	bool prevRegulated;
 
