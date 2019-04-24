@@ -14,24 +14,24 @@
 //**********************************
 //Constructor functions
 //**********************************
-MiniPID::MiniPID(double p, double i, double d, THandlerFunction fn) {
-	for(int i=0;i<10;i++)
+MiniPID::MiniPID(double p, double i, double d) {
+	for (int i = 0; i < 10; i++)
 		outSecond[i] = 0;
 	init();
 	P = p;
 	I = i;
 	D = d;
-	_on_trigger = fn;
+	this->setCallback(generalCbFunction);
 }
-MiniPID::MiniPID(double p, double i, double d, double f, THandlerFunction fn) {
-	for(int i=0;i<10;i++)
+MiniPID::MiniPID(double p, double i, double d, double f) {
+	for (int i = 0; i < 10; i++)
 		outSecond[i] = 0;
 	init();
 	P = p;
 	I = i;
 	D = d;
 	F = f;
-	_on_trigger = fn;
+	this->setCallback(generalCbFunction);
 }
 void MiniPID::init() {
 	P = 0;
@@ -303,24 +303,27 @@ double MiniPID::getOutput(double actual, double setpoint) {
 		output = lastOutput * outputFilter + output * (1 - outputFilter);
 	}
 
-	uint8_t second = (uint8_t) (millis() / 1000);
+
+	uint64_t second = (uint8_t) (millis() / 1000);
 	if (second != prevSecond) {
-		outSecond[second] = output;
+		outSecond[second % 10] = (int)output;
 		regulated = true;
-		for (int i=0; i < 10; i++) {
+		for (int i = 0; i < 10; i++) {
 			if (outSecond[i] != outSecond[0]) {
 				regulated = false;
 				break;
 			}
 		}
 		prevSecond = second;
-		if(regulated != prevRegulated)
-		{
-			// regulation changed;
-			_on_trigger(second);
+		if (regulated != prevRegulated) {
+			Serial.printf("trigger: %p\n", this->m_cb);
+			Serial.flush();
+			if (this->m_cb)
+				this->m_cb();
 			prevRegulated = regulated;
 		}
 	}
+
 
 	lastOutput = output;
 	return output;
@@ -529,4 +532,8 @@ double MiniPID::getMaxOutput() {
 
 double MiniPID::getMaxError() {
 	return this->maxError;
+}
+
+void MiniPID::setCallback(CallbackFunction cb) {
+	this->m_cb = cb;
 }

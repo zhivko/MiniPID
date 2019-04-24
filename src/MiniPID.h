@@ -4,17 +4,22 @@
 #include "HardwareSerial.h"
 #include <functional>
 
-template <typename T> int sgn(T val) {
-    return (T(0) < val) - (val < T(0));
+template<typename T> int sgn(T val) {
+	return (T(0) < val) - (val < T(0));
 }
 
-class MiniPID{
+static void generalCbFunction()
+{
+
+}
+
+class MiniPID {
 public:
 	// function to be called when regulation ends (setpoint is reached)
-    typedef std::function<bool(long time)> THandlerFunction;
+	typedef std::function<void()> CallbackFunction;
 
-	MiniPID(double, double, double, THandlerFunction handler);
-	MiniPID(double, double, double, double, THandlerFunction handler);
+	MiniPID(double, double, double);
+	MiniPID(double, double, double, double);
 	void setP(double);
 	void setI(double);
 	void setD(double);
@@ -23,7 +28,7 @@ public:
 	void setPID(double, double, double, double);
 	void setMaxIOutput(double);
 	void setOutputLimits(double);
-	void setOutputLimits(double,double);
+	void setOutputLimits(double, double);
 	void setDirection(bool);
 	void setSetpoint(double);
 	void reset();
@@ -35,7 +40,7 @@ public:
 	double getOutput(double);
 	double getOutput(double, double);
 	void setSynchronize(bool);
-	bool getSynchronize(); 
+	bool getSynchronize();
 
 	double getP();
 	double getI();
@@ -64,7 +69,7 @@ public:
 	double getMaxOutput();
 	double getMaxError();
 
-
+	void setCallback(CallbackFunction cb);
 
 private:
 	double clamp(double, double, double);
@@ -97,7 +102,7 @@ private:
 
 	double positionDiff;
 
-	double maxOutput; 
+	double maxOutput;
 	double minOutput;
 
 	double setpoint;
@@ -114,11 +119,11 @@ private:
 
 	double setpointRange;
 
-	uint8_t prevSecond;
-	IRAM_ATTR int outSecond[10];
+	uint64_t prevSecond;
+	int outSecond[10];
 	bool regulated;
 	bool prevRegulated;
 
-	THandlerFunction _on_trigger;
+	CallbackFunction m_cb;
 };
 #endif
